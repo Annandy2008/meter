@@ -15,7 +15,13 @@
   .neg{color:var(--red)} .pos{color:var(--grn)}
   .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .sub{color:var(--mut);font-size:14px;margin-top:6px;font-variant-numeric:tabular-nums}
-  .warn{color:var(--amb);font-size:15px;margin-top:8px;min-height:20px}
+  .mode{display:inline-block;font-size:12px;padding:3px 8px;border-radius:999px;background:#2a2f3a;color:var(--mut)}
+  .mode.on{background:#173a2a;color:var(--grn)}
+  .banner{margin-top:10px;padding:12px;border-radius:12px;font-size:16px;font-weight:600;display:none}
+  .banner.free{display:block;background:#173a2a;color:var(--grn)}
+  .banner.charge{display:block;background:#3a1719;color:var(--red)}
+  .banner.cool{display:block;background:#2e2a17;color:var(--amb)}
+  .cancel{display:none;margin-top:10px;background:var(--grn);color:#08140e}
   .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
   button,.linkbtn{font:inherit;border:none;border-radius:12px;padding:16px 10px;width:100%;font-size:17px;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;display:block}
   .work{background:var(--grn);color:#08140e} .rest{background:var(--red);color:#fff}
@@ -32,30 +38,54 @@
   table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
   td{padding:6px 0;border-bottom:1px solid var(--line)}
   td:last-child{text-align:right}
-  input{background:#0f1115;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit;width:130px;text-align:right}
+  input,select{background:#0f1115;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px;font:inherit}
   .tiny{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.5}
+  .todo{border-bottom:1px solid var(--line);padding:10px 0}
+  .todo .top{display:flex;gap:8px;align-items:center}
+  .todo .txt{flex:1;font-size:15px}
+  .todo.done .txt{color:var(--mut);text-decoration:line-through}
+  .todo .val{font-size:13px;font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+  .chips{display:flex;gap:6px;margin-top:8px}
+  .chips button{padding:6px 0;font-size:13px;font-weight:500;background:#0f1115;border:1px solid var(--line);color:var(--mut);border-radius:8px}
+  .chips button.sel.d{background:#173a2a;border-color:var(--grn);color:var(--grn)}
+  .chips button.sel.x{background:#2e2a17;border-color:var(--amb);color:var(--amb)}
+  .reason{width:100%;margin-top:6px;font-size:13px}
+  .addrow{display:flex;gap:6px;margin-top:10px}
+  .addrow input{flex:1;min-width:0}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <div class="card">
-    <div class="label">今天课表</div>
+    <div class="label">今天课表（每天早上点一下）</div>
     <div class="seg" id="seg">
       <button data-t="满课">满课 2h</button><button data-t="半课">半课 5h</button><button data-t="无课">无课 8h</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="row"><div class="label" id="stateLabel">没在计时</div><div class="label" id="dayLabel"></div></div>
+    <div class="row"><div class="label" id="stateLabel">没在计时</div><span class="mode" id="mode"></span></div>
     <div class="big" id="net">¥0.00</div>
     <div class="sub" id="detail"></div>
-    <div class="warn" id="warn"></div>
+    <div class="banner" id="banner"></div>
+    <button class="cancel" id="bCancel">算了，回去学习</button>
     <div class="btns">
-      <button class="work" id="bWork">开始干活</button>
+      <button class="work" id="bWork">开始学习</button>
       <button class="rest" id="bRest">开始休息</button>
       <button class="stop" id="bStop">停止计时</button>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div class="label">今天的 todo</div><div class="label" id="todoSum"></div></div>
+    <div id="todos"></div>
+    <div class="addrow">
+      <input id="todoIn" placeholder="加一项…">
+      <select id="todoSize"><option value="5">小 ¥5</option><option value="10" selected>中 ¥10</option><option value="20">大 ¥20</option></select>
+      <button class="ghost" id="todoAdd" style="width:auto;padding:8px 12px">加</button>
+    </div>
+    <div class="tiny">做完 +全额 · 外部原因（写一句理由）不赚不扣 · 没做完也没标原因 = 自己的原因，扣一半 · 全部做完（外部原因的除外）再奖 ¥20。<br><button class="ghost" id="carry" style="margin-top:8px">把昨天没做完的搬过来</button></div>
   </div>
 
   <div class="card">
@@ -69,106 +99,220 @@
   <div class="card">
     <div class="label">睡前</div>
     <a class="linkbtn" id="formLink" href="#" target="_blank" rel="noopener">一键提交今天到表单</a>
-    <div class="tiny">点一下就直接提交：日期、课表、有效小时、休息扣费、入睡时间（按点击时刻），状态记"正常"。看到 "Your response has been recorded" 就是成功了。凌晨 6 点前点，算前一天；同一天交两次以最后一次为准。</div>
+    <div class="tiny">直接提交：日期、课表、学习小时、休息+todo 净扣费、入睡时间（按点击时刻），状态记"正常"。看到 "Your response has been recorded" 就成功了。凌晨 6 点前点算前一天；同一天交两次以最后一次为准。</div>
   </div>
 
   <div class="card">
-    <div class="row"><div class="label">今天的记录</div></div>
+    <div class="label">今天的计时记录</div>
     <table id="log"></table>
     <div style="margin-top:10px"><button class="ghost" id="undo">删掉最后一条</button></div>
   </div>
 
   <div class="card">
-    <div class="label">休息计价（越歇越贵）</div>
-    <div class="tiny" style="margin-top:0">每次休息单独计：0–5 分钟 ¥1/分 · 5–15 分钟 ¥2/分 · 15–30 分钟 ¥3/分 · 30 分钟以上 ¥5/分。<br>歇 5 分钟 ¥5，30 分钟 ¥70，1 小时 ¥220。干活每小时 +¥11.76，今天结算 =（干活小时 − 目标）× 11.76 − 休息费。</div>
+    <div class="label">规则</div>
+    <div class="tiny" style="margin-top:0">
+      <b>未达标</b>：学习每小时 +¥11.76（目标前是在补差额）。点"开始休息"后先有 5 分钟冷静期（不算休息，可以反悔）。真正休息后前 7 分钟免费，之后 7–15 分钟 ¥2/分、15–30 分钟 ¥3/分、30 分钟以上 ¥5/分（歇 15 分钟 ¥16，30 分钟 ¥61，1 小时 ¥211）。<br>
+      <b>已达标</b>（学习小时 ≥ 目标）：自动切换。学习每小时 +¥11.76，休息每小时 −¥11.76（前 7 分钟仍免费），一样的价。<br>
+      免费时间用完时，页面会响一声并变红。手机息屏时网页没法提醒，想被叫回来可以同时让 Siri 计时。
+    </div>
   </div>
 
   <div class="card">
     <div class="row"><div class="label">表格里昨晚的余额</div>
-      <div style="display:flex;gap:8px"><input id="baseIn" type="number" step="0.01"><button class="ghost" id="setBase" style="width:auto">更新</button></div>
+      <div style="display:flex;gap:8px"><input id="baseIn" type="number" step="0.01" style="width:120px;text-align:right"><button class="ghost" id="setBase" style="width:auto">更新</button></div>
     </div>
     <div class="tiny">每隔几天对一下表格「规则」页 B22，填进来。记录只存在这个浏览器里。</div>
   </div>
 
 </div>
 <script>
-const WAGE=11.76, FLOOR=9500, T5070=14000, T32=12500, TAKEOUT=50;
-const TARGET={'满课':2,'半课':5,'无课':8};
-const TIERS=[[5,1],[15,2],[30,3],[Infinity,5]];
+/* ================== 设置区：想改规则只改这里 ================== */
+const WAGE=11.76;          // 时薪：学习每小时赚多少 / 达标后休息每小时扣多少
+const FLOOR=9500;          // 余额底线，扣到这里就不再往下扣
+const T5070=14000;         // 5070 档位线
+const T32=12500;           // 5060 32G 档位线
+const TAKEOUT=50;          // 一份外卖多少钱（只用来显示"= X 份外卖"）
+const FREE_MIN=7;          // 每次休息免费几分钟
+const COOL_MIN=5;          // 点"开始休息"后的冷静期（分钟），0 = 不要冷静期
+const ALL_DONE_BONUS=20;   // todo 全部做完的奖励
+const TODO_UNDONE_RATE=0.5;// 自己原因没做完，扣任务价值的几成（0.5 = 一半）
+const TARGET={'满课':2,'半课':5,'无课':8};   // 各类课表日的目标学习小时
+// 未达标时的休息单价：[到第几分钟为止, 每分钟几元]。第一档 0 元 = 免费期，要和 FREE_MIN 一致
+const TIERS=[[7,0],[15,2],[30,3],[Infinity,5]];
+// 你的 Google 表单提交地址和各题编号（换了表单才需要改）
 const FORM='https://docs.google.com/forms/d/e/1FAIpQLScA12FVscW_HziX5J1SApj1wWK88yg2oUKw7uqorPcrxIv_yw/formResponse?usp=pp_url';
 const E={date:'entry.825098406',cls:'entry.1333497327',hours:'entry.1862854429',rest:'entry.845630165',status:'entry.915353839',sleep:'entry.930485568'};
+/* ================== 设置区结束，下面是程序 ================== */
 
-const restCost=sec=>{let m=sec/60,c=0,p=0;for(const[l,r]of TIERS){const s=Math.min(m,l)-p;if(s<=0)break;c+=s*r;p=l}return c};
-const rateAt=sec=>{const m=sec/60;for(const[l,r]of TIERS)if(m<l)return r};
+// 未达标：前几分钟免费，之后越歇越贵
+const tierCost=sec=>{let m=sec/60,c=0,p=0;for(const[l,r]of TIERS){const s=Math.min(m,l)-p;if(s<=0)break;c+=s*r;p=l}return c};
+const tierRate=sec=>{const m=sec/60;for(const[l,r]of TIERS)if(m<l)return r};
+// 已达标：休息和学习同价
+const flatCost=sec=>Math.max(0,sec/60-FREE_MIN)/60*WAGE;
+const restCost=(sec,met)=>met?flatCost(sec):tierCost(sec);
+
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-// 一天从早上 6 点算起
 const dayKey=t=>{const d=new Date(t-6*3600e3);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 let S=store.get('dm_state',{base:17982,days:{},run:null});
 const $=id=>document.getElementById(id);
 const fmt=n=>(n<0?'-':'')+'¥'+Math.abs(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const hms=s=>[s/3600,s/60%60,s%60].map(x=>String(Math.floor(x)).padStart(2,'0')).join(':');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const save=()=>store.set('dm_state',S);
-const today=()=>{const k=dayKey(Date.now());if(!S.days[k])S.days[k]={cls:'无课',log:[]};return S.days[k]};
+const getDay=k=>{if(!S.days[k])S.days[k]={cls:'无课',log:[],todos:[]};if(!S.days[k].todos)S.days[k].todos=[];return S.days[k]};
+const today=()=>getDay(dayKey(Date.now()));
 
+// 声音：点按钮时解锁，免费时间用完响一下（页面开着时）
+let actx=null;
+function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}}
+function beep(){try{if(!actx)return;[0,0.25,0.5].forEach(t=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(0.25,actx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+t+0.2);o.start(actx.currentTime+t);o.stop(actx.currentTime+t+0.2)})}catch(e){}}
+
+function workSec(d){return d.log.filter(x=>x.type==='work').reduce((a,x)=>a+x.sec,0)}
+function todoNet(d){
+  let net=0,mine=0,done=0;
+  for(const t of d.todos){if(t.state==='done'){net+=t.val;done++}else if(t.state==='ext'){}else{net-=t.val*TODO_UNDONE_RATE;mine++}}
+  if(d.todos.length&&mine===0&&done>0)net+=ALL_DONE_BONUS;
+  return net;
+}
 function totals(){
-  const d=today();let work=0,rest=0;
-  for(const x of d.log){if(x.type==='work')work+=x.sec;else rest+=x.cost}
+  const d=today();let work=workSec(d),rest=d.log.filter(x=>x.type==='rest').reduce((a,x)=>a+x.cost,0);
   let live=0,liveCost=0;
-  if(S.run){live=(Date.now()-S.run.start)/1000;if(S.run.type==='work')work+=live;else{liveCost=restCost(live);rest+=liveCost}}
-  const target=TARGET[d.cls];
-  const net=(work/3600-target)*WAGE-rest;
-  return{d,work,rest,live,liveCost,target,net};
+  if(S.run){live=(Date.now()-S.run.start)/1000;if(S.run.type==='work')work+=live;else{liveCost=restCost(live,S.run.met);rest+=liveCost}}
+  const target=TARGET[d.cls],met=work>=target*3600,td=todoNet(d);
+  return{d,work,rest,live,liveCost,target,met,td,net:(work/3600-target)*WAGE-rest+td};
 }
 function stopRun(){
   if(!S.run)return;
-  const sec=(Date.now()-S.run.start)/1000;
-  const k=dayKey(S.run.start);if(!S.days[k])S.days[k]={cls:'无课',log:[]};
+  const sec=(Date.now()-S.run.start)/1000,d=getDay(dayKey(S.run.start));
   const t=new Date(S.run.start).toTimeString().slice(0,5);
-  S.days[k].log.push(S.run.type==='work'?{type:'work',t,sec}:{type:'rest',t,sec,cost:Math.round(restCost(sec)*100)/100});
+  d.log.push(S.run.type==='work'?{type:'work',t,sec}:{type:'rest',t,sec,met:S.run.met,cost:Math.round(restCost(sec,S.run.met)*100)/100});
   S.run=null;
 }
-function start(type){if(S.run&&S.run.type===type)return;stopRun();S.run={type,start:Date.now()};save();render()}
-$('bWork').onclick=()=>start('work');
-$('bRest').onclick=()=>start('rest');
-$('bStop').onclick=()=>{stopRun();save();render()};
+function start(type){
+  unlockAudio();
+  if(S.run&&S.run.type===type)return;stopRun();
+  const d=today(),met=workSec(d)>=TARGET[d.cls]*3600;
+  S.run={type,start:Date.now(),met,beeped:false};save();render();
+}
+$('bWork').onclick=()=>{S.cool=null;start('work')};
+$('bRest').onclick=()=>{
+  unlockAudio();
+  if(S.run&&S.run.type==='rest')return;
+  if(COOL_MIN>0){if(!S.cool){S.cool={start:Date.now()};save();render()}}
+  else start('rest');
+};
+$('bCancel').onclick=()=>{const wasWork=S.run&&S.run.type==='work';S.cool=null;if(!wasWork)start('work');else{save();render()}};
+function checkCool(){
+  if(!S.cool)return false;
+  const end=S.cool.start+COOL_MIN*60e3;
+  if(Date.now()>=end){
+    // 冷静期结束：在结束那一刻开始休息（之前的学习计时到这一刻为止）
+    if(S.run){const sec=(end-S.run.start)/1000,d=getDay(dayKey(S.run.start));const t=new Date(S.run.start).toTimeString().slice(0,5);
+      if(S.run.type==='work')d.log.push({type:'work',t,sec});S.run=null}
+    const d=today(),met=workSec(d)>=TARGET[d.cls]*3600;
+    S.run={type:'rest',start:end,met,beeped:false};S.cool=null;save();
+    return false;
+  }
+  return true;
+}
+$('bStop').onclick=()=>{S.cool=null;stopRun();save();render()};
 $('undo').onclick=()=>{today().log.pop();save();render()};
 document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{today().cls=b.dataset.t;save();render()});
 $('baseIn').value=S.base;
 $('setBase').onclick=()=>{const v=parseFloat($('baseIn').value);if(!isNaN(v)){S.base=v;save();render()}};
 
+// todo
+function addTodo(text,val){today().todos.push({id:Date.now()+Math.random(),text,val,state:'open',reason:''})}
+$('todoAdd').onclick=()=>{const v=$('todoIn').value.trim();if(!v)return;addTodo(v,+$('todoSize').value);$('todoIn').value='';save();renderTodos();render()};
+$('todoIn').onkeydown=e=>{if(e.key==='Enter')$('todoAdd').click()};
+$('carry').onclick=()=>{
+  const y=new Date(Date.now()-30*3600e3),k=dayKey(y.getTime()),yd=S.days[k];
+  if(!yd||!yd.todos)return;
+  const have=new Set(today().todos.map(t=>t.text));
+  yd.todos.filter(t=>t.state!=='done'&&!have.has(t.text)).forEach(t=>addTodo(t.text,t.val));
+  save();renderTodos();render();
+};
+function renderTodos(){
+  const d=today();
+  $('todos').innerHTML=d.todos.map((t,i)=>{
+    const v=t.state==='done'?`<span class="pos">+¥${t.val}</span>`:t.state==='ext'?'<span style="color:var(--amb)">¥0</span>':`<span class="neg">-¥${t.val*TODO_UNDONE_RATE}</span>`;
+    return `<div class="todo ${t.state==='done'?'done':''}" data-i="${i}">
+      <div class="top"><div class="txt">${esc(t.text)}</div><div class="val">${v}</div></div>
+      <div class="chips">
+        <button class="d ${t.state==='done'?'sel':''}" data-a="done">✓ 做完</button>
+        <button class="x ${t.state==='ext'?'sel':''}" data-a="ext">外部原因</button>
+        <button data-a="del">删除</button>
+      </div>
+      ${t.state==='ext'?`<input class="reason" data-a="reason" placeholder="一句理由（必填，不填按自己原因算）" value="${esc(t.reason)}">`:''}
+    </div>`}).join('')||'<div class="tiny" style="margin-top:0">还没有</div>';
+  $('todos').querySelectorAll('.todo').forEach(el=>{
+    const t=d.todos[+el.dataset.i];
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+      const a=b.dataset.a;
+      if(a==='del')d.todos.splice(+el.dataset.i,1);
+      else t.state=t.state===a?'open':a;
+      save();renderTodos();render();
+    });
+    const r=el.querySelector('.reason');
+    if(r)r.oninput=()=>{t.reason=r.value;save();render()};
+  });
+}
+// 外部原因没写理由 = 自己原因
+const _todoNet=todoNet;
+function effTodos(d){return d.todos.map(t=>t.state==='ext'&&!t.reason.trim()?{...t,state:'open'}:t)}
+
 function render(){
-  const T=totals(),d=T.d;
+  const d=today();
+  const T=(()=>{const real=d.todos;d.todos=effTodos(d);const r=totals();d.todos=real;return r})();
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('sel',b.dataset.t===d.cls));
-  $('dayLabel').textContent=dayKey(Date.now()).slice(5).replace('-','/');
-  $('net').textContent=fmt(T.net);
-  $('net').className='big '+(T.net<0?'neg':'pos');
-  const left=Math.max(0,T.target-T.work/3600);
-  $('detail').textContent=`干活 ${(T.work/3600).toFixed(2)}h / 目标 ${T.target}h · 休息费 ${fmt(-T.rest)}`;
+  $('net').textContent=fmt(T.net);$('net').className='big '+(T.net<0?'neg':'pos');
+  $('mode').textContent=T.met?'已达标：学习和休息同价':'未达标';
+  $('mode').className='mode'+(T.met?' on':'');
+  $('detail').textContent=`学习 ${(T.work/3600).toFixed(2)}h / 目标 ${T.target}h · 休息 ${fmt(-T.rest)} · todo ${T.td>=0?'+':''}${fmt(T.td)}`;
+  $('todoSum').textContent=(T.td>=0?'+':'')+fmt(T.td);
   $('bWork').classList.toggle('on',S.run?.type==='work');
   $('bRest').classList.toggle('on',S.run?.type==='rest');
-  let st='没在计时',w=left>0?`再干 ${left.toFixed(1)} 小时就不扣钱了`:'今天目标已达成，再干都是赚的';
-  if(S.run?.type==='work'){st=`干活中 ${hms(T.live)}`}
+  const cooling=checkCool();
+  const bn=$('banner');bn.className='banner';$('bCancel').style.display='none';
+  let st='没在计时';
+  if(S.run?.type==='work')st=`学习中 ${hms(T.live)}`;
   if(S.run?.type==='rest'){
-    st=`休息中 ${hms(T.live)} · ¥${rateAt(T.live)}/分钟`;
     const m=T.live/60;
-    w=m<4.5?`这次已花 ${fmt(T.liveCost)}`:m<5?'马上 5 分钟了，过了就翻倍':m<15?`"就五分钟"已经过了 · 这次 ${fmt(T.liveCost)}`:`这次 ${fmt(T.liveCost)} = ${(T.liveCost/TAKEOUT).toFixed(1)} 份外卖`;
+    if(m<FREE_MIN){
+      st=`休息中 ${hms(T.live)} · 免费`;
+      const s=Math.ceil(FREE_MIN*60-T.live);
+      bn.textContent=`免费休息还剩 ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;bn.className='banner free';
+    }else{
+      if(!S.run.beeped){S.run.beeped=true;save();beep();if(navigator.vibrate)navigator.vibrate([300,150,300])}
+      const rate=S.run.met?`¥${(WAGE/60).toFixed(2)}/分`:`¥${tierRate(T.live)}/分`;
+      st=`休息中 ${hms(T.live)} · ${rate}`;
+      bn.textContent=`免费 ${FREE_MIN} 分钟用完了，开始扣钱 · 这次已经 ${fmt(T.liveCost)}`+(T.liveCost>=TAKEOUT?`（${(T.liveCost/TAKEOUT).toFixed(1)} 份外卖）`:'');
+      bn.className='banner charge';
+    }
   }
-  $('stateLabel').textContent=st;$('warn').textContent=w;
-  document.title=S.run?.type==='rest'?`休息中 ${fmt(-T.liveCost)}`:`今日 ${fmt(T.net)}`;
+  if(cooling){
+    const s2=Math.ceil((S.cool.start+COOL_MIN*60e3-Date.now())/1000);
+    bn.textContent=`冷静期 ${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')} · 真的要休息吗？时间到会自动开始休息`;bn.className='banner cool';
+    $('bCancel').style.display='block';
+    if(!S.run)st='冷静期';
+  }
+  $('stateLabel').textContent=st;
+  document.title=S.run?.type==='rest'?(T.live/60<FREE_MIN?'休息中 · 免费':`休息中 -${fmt(T.liveCost)}`):`今日 ${fmt(T.net)}`;
   const bal=Math.max(FLOOR,S.base+T.net);
   $('bal').textContent=fmt(bal);
   $('tier').textContent=bal>=T5070?'5070 版':bal>=T32?'5060 32G 版':'基础 5060';
   $('gap').textContent=bal>=T5070?`高出 5070 线 ${fmt(bal-T5070)}`:`离 5070 还差 ${fmt(T5070-bal)}`;
   $('prog').style.width=Math.min(100,Math.max(0,(bal-FLOOR)/(T5070-FLOOR)*100))+'%';
   $('log').innerHTML=d.log.slice().reverse().map(x=>x.type==='work'
-    ?`<tr><td>${x.t} 干活 ${Math.round(x.sec/60)} 分钟</td><td class="pos">+${(x.sec/3600).toFixed(2)}h</td></tr>`
-    :`<tr><td>${x.t} 休息 ${Math.round(x.sec/60)} 分钟</td><td class="neg">${fmt(-x.cost)}</td></tr>`).join('')||'<tr><td style="color:var(--mut)">还没有</td><td></td></tr>';
+    ?`<tr><td>${x.t} 学习 ${Math.round(x.sec/60)} 分钟</td><td class="pos">+${(x.sec/3600).toFixed(2)}h</td></tr>`
+    :`<tr><td>${x.t} 休息 ${Math.round(x.sec/60)} 分钟${x.met?'（已达标）':''}</td><td class="neg">${fmt(-x.cost)}</td></tr>`).join('')||'<tr><td style="color:var(--mut)">还没有</td><td></td></tr>';
+  // 表单"休息扣费"一栏 = 休息费 − todo 净收益（可为负）
   const now=new Date(),hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
-  const q=[[E.date,dayKey(Date.now())],[E.cls,d.cls],[E.hours,(T.work/3600).toFixed(1)],[E.rest,T.rest.toFixed(2)],[E.status,'正常'],[E.sleep,hh+':'+mm]]
+  const q=[[E.date,dayKey(Date.now())],[E.cls,d.cls],[E.hours,(T.work/3600).toFixed(1)],[E.rest,(T.rest-T.td).toFixed(2)],[E.status,'正常'],[E.sleep,hh+':'+mm]]
     .map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   $('formLink').href=FORM+'&'+q+'&submit=Submit';
 }
-setInterval(render,500);render();
+renderTodos();setInterval(render,500);render();
 </script>
 </body>
 </html>
